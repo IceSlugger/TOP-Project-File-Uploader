@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>File Uploader</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+
+  <h1>File Uploader</h1>
+
+  <!-- 1. Create User Section -->
+  <section>
+    <h2>1. Create User</h2>
+    <form id="userForm">
+      <div>
+        <label for="email">Email:</label>
+        <input type="email" id="email" required />
+      </div>
+      <div>
+        <label for="name">Name:</label>
+        <input type="text" id="name" required />
+      </div>
+      <button type="submit">Create User</button>
+    </form>
+    <p id="userStatus"></p>
+  </section>
+
+  <hr />
+
+  <!-- 2. Upload File Section -->
+  <section>
+    <h2>2. Upload File</h2>
+    <form id="uploadForm">
+      <div>
+        <label for="userId">User ID:</label>
+        <input type="number" id="userId" placeholder="e.g. 1" required />
+      </div>
+      <div>
+        <label for="fileInput">Choose File:</label>
+        <input type="file" id="fileInput" name="file" required />
+      </div>
+      <button type="submit">Upload File</button>
+    </form>
+    <p id="uploadStatus"></p>
+  </section>
+
+  <hr />
+
+  <!-- 3. User List Section -->
+  <section>
+    <h2>3. Users & Uploaded Files</h2>
+    <button id="loadUsersBtn">Refresh User List</button>
+    <div id="usersContainer"></div>
+  </section>
+
+  <script>
+    // Handle User Creation
+    document.getElementById("userForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const email = document.getElementById("email").value;
+      const name = document.getElementById("name").value;
+
+      const res = await fetch("/users", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, name })
+      });
+
+      const data = await res.json();
+      const statusEl = document.getElementById("userStatus");
+      if (res.ok) {
+        statusEl.textContent = `User created successfully! ID: ${data.id}`;
+        document.getElementById("userForm").reset();
+      } else {
+        statusEl.textContent = `Error: ${data.error || 'Failed to create user'}`;
+      }
+    });
+
+    // Handle File Upload
+    document.getElementById("uploadForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const userId = document.getElementById("userId").value;
+      const fileInput = document.getElementById("fileInput");
+
+      const formData = new FormData();
+      formData.append("file", fileInput.files[0]);
+
+      const res = await fetch(`/users/${userId}/upload`, {
+        method: "POST",
+        body: formData
+      });
+
+      const data = await res.json();
+      const statusEl = document.getElementById("uploadStatus");
+      if (res.ok) {
+        statusEl.textContent = `File uploaded successfully! URL: ${data.url}`;
+        document.getElementById("uploadForm").reset();
+      } else {
+        statusEl.textContent = `Error: ${data.error || 'Failed to upload file'}`;
+      }
+    });
+
+    // Fetch and Display Users with Files
+    async function fetchUsers() {
+      const res = await fetch("/users");
+      const users = await res.json();
+      const container = document.getElementById("usersContainer");
+      container.innerHTML = "";
+
+      users.forEach(user => {
+        const userDiv = document.createElement("div");
+        userDiv.className = "user-card";
+        userDiv.innerHTML = `
+          <h3>User ID: ${user.id} - ${user.name} (${user.email})</h3>
+          <ul>
+            ${user.files.length > 0 
+              ? user.files.map(f => `<li><a href="${f.url}" target="_blank">${f.filename}</a></li>`).join('') 
+              : '<li>No files uploaded yet.</li>'}
+          </ul>
+        `;
+        container.appendChild(userDiv);
+      });
+    }
+
+    document.getElementById("loadUsersBtn").addEventListener("click", fetchUsers);
+  </script>
+</body>
+</html>
